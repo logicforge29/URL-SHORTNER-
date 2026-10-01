@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini URL Shortener — CLI</title>
+<style>
+:root{--page:#eef1f8;--ink:#14182b;--mute:#5d6685;--line:#dbe0f0;--indigo:#4f5bff;--term:#101a2d;--bar:#17233b;--txt:#d9e3f5;--dim:#7f8fae;--yel:#ffcf5c;--mint:#6ee7b7;--red:#ff7b8a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page) radial-gradient(#d3d9ee 1px,transparent 1px) 0 0/22px 22px;color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1040px;margin:0 auto;padding:40px 18px 56px}
+header{display:flex;flex-wrap:wrap;gap:20px 40px;align-items:flex-end;justify-content:space-between}
+h1{font:800 clamp(32px,5.5vw,50px)/1.03 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:-.035em;margin:0 0 10px}
+.sub{margin:0;color:var(--mute);max-width:56ch}
+.stats{display:flex;gap:10px}
+.stats div{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 18px;min-width:112px;font-size:13px;color:var(--mute)}
+.stats b{display:block;font-size:28px;line-height:1.1;color:var(--ink);letter-spacing:-.02em}
+nav{display:inline-flex;gap:4px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:12px;margin:26px 0 16px}
+nav button{font:600 14px system-ui,sans-serif;padding:8px 18px;border:0;border-radius:9px;background:transparent;color:var(--mute);cursor:pointer}
+nav button[aria-selected=true]{background:var(--indigo);color:#fff}
+button:focus-visible,input:focus-visible{outline:2px solid var(--yel);outline-offset:2px}
+.pane{display:none}.pane.on{display:block}
+.mono{font:14px/1.6 ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+.grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:18px;align-items:start}
+.win{background:var(--term);color:var(--txt);border-radius:14px;overflow:hidden;box-shadow:0 22px 44px -22px rgba(25,35,90,.5)}
+.bar2{display:flex;align-items:center;gap:7px;background:var(--bar);padding:10px 14px;color:var(--dim);font:13px ui-monospace,Menlo,Consolas,monospace}
+.bar2 i{width:11px;height:11px;border-radius:50%;background:#ff6159}
+.bar2 i:nth-child(2){background:#ffbd2e}.bar2 i:nth-child(3){background:#28c941}
+.bar2 span{margin-left:8px}
+.acts{margin-left:auto;display:flex;gap:6px}
+.acts button,.chips button{font:13px ui-monospace,Menlo,Consolas,monospace;background:#223253;color:var(--txt);border:1px solid #31456e;border-radius:7px;padding:4px 10px;cursor:pointer}
+.acts button:hover,.chips button:hover{background:#2c4170}
+.body{padding:16px}
+#term{height:360px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+#term .e{color:var(--red)}#term .ok{color:var(--mint)}#term .d{color:var(--dim)}#term .p{color:var(--yel)}
+.row{display:flex;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid #243558}
+.row span{color:var(--yel);white-space:nowrap}
+#in{flex:1;min-width:0;background:transparent;border:0;color:var(--txt);padding:4px 0}
+#in:focus-visible{outline:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 16px}
+.links{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+.links h2{font-size:16px;margin:0 0 4px}
+.links ul{list-style:none;margin:0;padding:0;max-height:360px;overflow:auto}
+.links li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:11px 4px;border-top:1px solid var(--line)}
+.links li:first-child{border-top:0}
+.links li.new{animation:fl 1.4s ease-out}
+.links li.empty{display:block;color:var(--mute);font-size:14px}
+@keyframes fl{from{background:#fff3c4}to{background:transparent}}
+.code{font:600 13px ui-monospace,Menlo,Consolas,monospace;background:#eceeff;color:var(--indigo);border:0;border-radius:8px;padding:4px 10px;cursor:pointer}
+.code:hover{background:#dfe2ff}
+.url{font-size:13px;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl{font-size:12px;color:var(--mute);white-space:nowrap}
+.note{font-size:13px;color:var(--mute);margin:12px 0 0}
+pre{margin:0;padding:16px;max-height:540px;overflow:auto;white-space:pre}
+pre .k{color:#c3a6ff}pre .s{color:#9be59d}pre .c{color:#6c7a99;font-style:italic}pre .n{color:#ffb86b}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+@media(max-width:520px){#term{height:300px}.row span{display:none}}
+@media(prefers-reduced-motion:reduce){.links li.new{animation:none}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div><h1>Mini URL Shortener</h1><p class="sub">A Python command-line tool that shortens URLs, resolves codes, lists everything and remembers it between runs. This page runs the same logic in your browser, so try it below.</p></div>
+<div class="stats"><div><b id="n-links">0</b>links stored</div><div><b id="n-clicks">0</b>total clicks</div></div>
+</header>
+<nav role="tablist">
+<button role="tab" aria-selected="true" data-t="demo">Try it</button>
+<button role="tab" aria-selected="false" data-t="py">main.py</button>
+<button role="tab" aria-selected="false" data-t="md">README.md</button>
+</nav>
+<section class="pane on" id="demo"><div class="grid">
+<div class="win"><div class="bar2"><i></i><i></i><i></i><span>~/url-shortener</span></div>
+<div class="body mono"><div id="term" aria-live="polite"></div><div class="row"><span>$ python main.py</span><input id="in" class="mono" autocomplete="off" spellcheck="false" aria-label="Command" placeholder="shorten https://example.com"></div></div>
+<div class="chips" id="chips"></div></div>
+<aside class="links"><h2>Stored links</h2><ul id="rows"></ul><p class="note">Saved in this browser, like urls.json on disk, so it survives a refresh. Tap a code to resolve it. Up/Down recalls earlier commands.</p></aside>
+</div></section>
+<section class="pane" id="py"><div class="win"><div class="bar2"><i></i><i></i><i></i><span>main.py</span><div class="acts"><button data-copy="py">Copy</button><button data-dl="py" data-name="main.py">Download</button></div></div><pre class="mono"></pre></div></section>
+<section class="pane" id="md"><div class="win"><div class="bar2"><i></i><i></i><i></i><span>README.md</span><div class="acts"><button data-copy="md">Copy</button><button data-dl="md" data-name="README.md">Download</button></div></div><pre class="mono"></pre></div></section>
+</main>
+
+<script type="text/plain" id="src-py">
+#!/usr/bin/env python3
+"""Mini URL Shortener (Track A, CLI). Python 3, standard library only."""
+import argparse
+import json
+import re
+import secrets
+import string
+import sys
+import webbrowser
+from pathlib import Path
+from urllib.parse import urlparse
+
+DB = Path(__file__).with_name("urls.json")
+ALPHABET = string.ascii_letters + string.digits
+ALIAS_RE = re.compile(r"^[A-Za-z0-9_-]{3,20}$")
+
+
+def load():
+    try:
+        return json.loads(DB.read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save(data):
+    DB.write_text(json.dumps(data, indent=2))
+
+
+def valid_url(url):
+    if re.search(r"\s", url):
+        return False
+    p = urlparse(url)
+    host = p.hostname or ""
+    return p.scheme in ("http", "https") and ("." in host or host == "localhost")
+
+
+def new_code(data, length=6):
+    while True:
+        code = "".join(secrets.choice(ALPHABET) for _ in range(length))
+        if code not in data:
+            return code
+
+
+def shorten(url, alias=None):
+    if not valid_url(url):
+        sys.exit(f"Error: '{url}' is not a valid http(s) URL.")
+    data = load()
+    if alias:
+        if not ALIAS_RE.match(alias):
+            sys.exit("Error: alias must be 3-20 letters, digits, '-' or '_'.")
+        if alias in data:
+            sys.exit(f"Error: alias '{alias}' is already taken.")
+        code = alias
+    else:
+        for old, entry in data.items():
+            if entry["url"] == url and not entry["custom"]:
+                print(f"Already shortened. Short code: {old}")
+                return
+        code = new_code(data)
+    data[code] = {"url": url, "clicks": 0, "custom": bool(alias)}
+    save(data)
+    print(f"Short code: {code}")
+
+
+def resolve(code, open_it=False):
+    data = load()
+    if code not in data:
+        sys.exit(f"Error: no URL found for code '{code}'.")
+    data[code]["clicks"] += 1
+    save(data)
+    url = data[code]["url"]
+    print(url)
+    if open_it:
+        webbrowser.open(url)
+
+
+def list_all():
+    data = load()
+    if not data:
+        print("Nothing shortened yet. Try: python main.py shorten <url>")
+        return
+    print(f"{'CODE':<14}{'CLICKS':<8}URL")
+    for code, e in data.items():
+        print(f"{code:<14}{e['clicks']:<8}{e['url']}")
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Mini URL Shortener")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    s = sub.add_parser("shorten", help="create a short code for a URL")
+    s.add_argument("url")
+    s.add_argument("--alias", help="use your own short code")
+    r = sub.add_parser("resolve", help="print the original URL for a code")
+    r.add_argument("code")
+    r.add_argument("--open", action="store_true", dest="open_it",
+                   help="also open it in your browser")
+    sub.add_parser("list", help="show all stored mappings")
+    a = ap.parse_args()
+    if a.cmd == "shorten":
+        shorten(a.url, a.alias)
+    elif a.cmd == "resolve":
+        resolve(a.code, a.open_it)
+    else:
+        list_all()
+
+
+if __name__ == "__main__":
+    main()
+</script>
+
+<script type="text/plain" id="src-md">
+# Mini URL Shortener (CLI)
+
+Turns long URLs into short codes, resolves them back, and remembers everything between runs. Python 3, standard library only, no external shortening APIs.
+
+## Features
+
+- `shorten <url>` creates a random 6-character code
+- `resolve <code>` prints the original URL
+- `list` shows every mapping with its click count
+- Custom aliases: `shorten <url> --alias myco`
+- Click counter: each `resolve` adds one
+- Data is saved to `urls.json` next to `main.py`
+- Handles invalid URLs, taken or malformed aliases, and unknown codes with a clear error
+- Shortening the same URL twice returns the existing code
+- Extra: `resolve <code> --open` opens the URL in your browser
+
+## Run
+
+```
+python main.py shorten <url> [--alias NAME]
+python main.py resolve <code> [--open]
+python main.py list
+```
+
+## Sample session
+
+```
+$ python main.py shorten https://www.python.org/downloads/
+Short code: k3Fz9a
+
+$ python main.py shorten https://github.com/ImpacTusdevloper --alias impactus
+Short code: impactus
+
+$ python main.py resolve impactus
+https://github.com/ImpacTusdevloper
+
+$ python main.py list
+CODE          CLICKS  URL
+k3Fz9a        0       https://www.python.org/downloads/
+impactus      1       https://github.com/ImpacTusdevloper
+
+$ python main.py resolve nope
+Error: no URL found for code 'nope'.
+
+$ python main.py shorten not-a-url
+Error: 'not-a-url' is not a valid http(s) URL.
+```
+
+## How it works
+
+A dictionary of `code -> {url, clicks, custom}` is loaded from `urls.json` on every command and written back after any change. Random codes come from `secrets.choice` over letters and digits, and are regenerated if they collide. URLs are checked with `urllib.parse` (http/https scheme and a real-looking host).
+
+## Try it without installing
+
+Open `url-shortener.html` in any browser for a live, in-browser version of the same commands.
+</script>
+
+<script>
+(function(){
+var KEY='urlshort-db',mem={},lastNew=null,nl=document.getElementById('n-links'),nc=document.getElementById('n-clicks');
+function load(){try{return JSON.parse(localStorage.getItem(KEY)||'{}')}catch(e){return mem}}
+function save(d){mem=d;try{localStorage.setItem(KEY,JSON.stringify(d))}catch(e){}render()}
+var AL='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',ALIAS=/^[A-Za-z0-9_-]{3,20}$/;
+function validUrl(u){try{var p=new URL(u);return /^https?:$/.test(p.protocol)&&!/\s/.test(u)&&(p.hostname.indexOf('.')>-1||p.hostname==='localhost')}catch(e){return false}}
+function newCode(d){var c;do{c='';for(var i=0;i<6;i++)c+=AL[Math.floor(Math.random()*AL.length)]}while(d[c]);return c}
+function pad(s,n){s=String(s);while(s.length<n)s+=' ';return s}
+
+var term=document.getElementById('term'),inp=document.getElementById('in');
+function out(t,c){var d=document.createElement('div');d.textContent=t;if(c)d.className=c;term.appendChild(d);term.scrollTop=term.scrollHeight}
+var HELP='usage: main.py <command>\n\n  shorten <url> [--alias NAME]   create a short code\n  resolve <code> [--open]        print the original URL\n  list                           show all mappings\n\nextra (demo only): clear, reset';
+function err(m){out('Error: '+m,'e')}
+
+function run(line){
+  var t=line.trim().split(/\s+/).filter(Boolean);if(!t.length)return;
+  var alias=null,open=false,args=[];
+  for(var i=1;i<t.length;i++){var a=t[i];
+    if(a==='--alias'){alias=t[++i]||''}
+    else if(a.indexOf('--alias=')===0){alias=a.slice(8)}
+    else if(a==='--open'){open=true}
+    else args.push(a)}
+  lastNew=null;var cmd=t[0].toLowerCase(),d=load();
+  if(cmd==='shorten'){
+    if(args.length!==1)return err('usage: shorten <url> [--alias NAME]');
+    var url=args[0];
+    if(!validUrl(url))return err("'"+url+"' is not a valid http(s) URL.");
+    var code;
+    if(alias!==null){
+      if(!ALIAS.test(alias))return err("alias must be 3-20 letters, digits, '-' or '_'.");
+      if(d[alias])return err("alias '"+alias+"' is already taken.");
+      code=alias;
+    }else{
+      for(var k in d){if(d[k].url===url&&!d[k].custom){out('Already shortened. Short code: '+k,'ok');return}}
+      code=newCode(d);
+    }
+    d[code]={url:url,clicks:0,custom:alias!==null};lastNew=code;save(d);
+    out('Short code: '+code,'ok');
+  }else if(cmd==='resolve'){
+    if(args.length!==1)return err('usage: resolve <code> [--open]');
+    var c=args[0];
+    if(!Object.prototype.hasOwnProperty.call(d,c))return err("no URL found for code '"+c+"'.");
+    d[c].clicks++;save(d);out(d[c].url,'ok');
+    if(open)window.open(d[c].url,'_blank','noopener');
+  }else if(cmd==='list'){
+    var keys=Object.keys(d);
+    if(!keys.length)return out('Nothing shortened yet. Try: shorten <url>','d');
+    out(pad('CODE',14)+pad('CLICKS',8)+'URL','p');
+    keys.forEach(function(k){out(pad(k,14)+pad(d[k].clicks,8)+d[k].url)});
+  }else if(cmd==='clear'){term.textContent='';
+  }else if(cmd==='reset'){save({});out('Demo data cleared.','d');
+  }else if(cmd==='help'||cmd==='-h'||cmd==='--help'){out(HELP,'d');
+  }else{err("unknown command '"+t[0]+"'. Type help.")}
+}
+
+var hist=[],hi=0;
+inp.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){var v=inp.value;if(!v.trim())return;out('$ python main.py '+v,'p');run(v);hist.push(v);hi=hist.length;inp.value=''}
+  else if(e.key==='ArrowUp'&&hist.length){hi=Math.max(0,hi-1);inp.value=hist[hi];e.preventDefault()}
+  else if(e.key==='ArrowDown'&&hist.length){hi=Math.min(hist.length,hi+1);inp.value=hist[hi]||'';e.preventDefault()}
+});
+var samples=['help','shorten https://www.python.org/downloads/','shorten https://github.com/ImpacTusdevloper --alias impactus','list','resolve impactus','shorten not-a-url','resolve nope','reset'];
+var chips=document.getElementById('chips');
+samples.forEach(function(s){var b=document.createElement('button');b.textContent=s.length>34?s.slice(0,32)+'…':s;b.title=s;
+  b.onclick=function(){out('$ python main.py '+s,'p');run(s);inp.focus()};chips.appendChild(b)});
+out('Mini URL Shortener. Type help or tap a sample below.','d');render();
+
+function render(){
+var d=load(),ks=Object.keys(d),ul=document.getElementById('rows'),n=0;ul.textContent='';
+ks.slice().reverse().forEach(function(k){var e=d[k];n+=e.clicks;
+var li=document.createElement('li'),b=document.createElement('button'),u=document.createElement('span'),c=document.createElement('span');
+b.className='code';b.textContent=k;b.title='Resolve '+k;b.onclick=function(){var s='resolve '+k;out('$ python main.py '+s,'p');run(s)};
+u.className='url';u.textContent=e.url;u.title=e.url;c.className='cl';c.textContent=e.clicks+(e.clicks===1?' click':' clicks');
+if(k===lastNew)li.className='new';li.appendChild(b);li.appendChild(u);li.appendChild(c);ul.appendChild(li)});
+if(!ks.length){var x=document.createElement('li');x.className='empty';x.textContent='No links yet. Run a sample command to create one.';ul.appendChild(x)}
+nl.textContent=ks.length;nc.textContent=n}
+var tabs=document.querySelectorAll('nav button');
+tabs.forEach(function(b){b.onclick=function(){
+  tabs.forEach(function(x){x.setAttribute('aria-selected',x===b)});
+  document.querySelectorAll('.pane').forEach(function(p){p.classList.toggle('on',p.id===b.dataset.t)})}});
+function src(k){return document.getElementById('src-'+k).textContent.replace(/^\n+/,'')}
+function hl(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/(#.*$)|("""[\s\S]*?"""|f?"(?:[^"\\\n]|\\.)*"|f?'(?:[^'\\\n]|\\.)*')|\b(def|import|from|if|else|elif|return|for|in|while|not|and|or|True|False|None|try|except|as|with|class)\b|\b(\d+)\b/gm,function(m,c,s,k){return '<span class="'+(c?'c':s?'s':k?'k':'n')+'">'+m+'</span>'})}
+document.querySelector('#py pre').innerHTML=hl(src('py'));document.querySelector('#md pre').textContent=src('md');
+document.querySelectorAll('[data-copy]').forEach(function(b){b.onclick=function(){
+  var t=src(b.dataset.copy),done=function(){var o=b.textContent;b.textContent='Copied';setTimeout(function(){b.textContent=o},1200)};
+  if(navigator.clipboard)navigator.clipboard.writeText(t).then(done,done);else done()}});
+document.querySelectorAll('[data-dl]').forEach(function(b){b.onclick=function(){
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([src(b.dataset.dl)],{type:'text/plain'}));
+  a.download=b.dataset.name;a.click();URL.revokeObjectURL(a.href)}});
+})();
+</script>
+</body>
+</html>
